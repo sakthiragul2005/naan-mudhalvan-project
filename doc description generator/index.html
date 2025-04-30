@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Doctor Voice Entry</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin-top: 20px;
+      cursor: pointer;
+      border-radius: 5px;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      display: block;
+      width: 100%;
+    }
+
+    button:hover {
+      background-color: #388e3c;
+    }
+
+    .status {
+      text-align: center;
+      font-weight: bold;
+      color: #1976d2;
+    }
+  </style>
+</head>
+<body>
+  <h2>Doctor Voice Registration</h2>
+  <div class="status" id="status">Waiting to start...</div>
+
+  <form method="POST" id="doctorForm">
+    <input type="text" id="name" name="name" hidden>
+    <input type="text" id="age" name="age" hidden>
+    <input type="text" id="medicine" name="medicine" hidden>
+    <textarea id="description" name="description" hidden></textarea>
+  </form>
+
+  <button onclick="startVoiceLoop()">🎤 Start Voice Entry</button>
+
+  <script>
+    const questions = [
+      { field: "name", prompt: "Say the patient's name" },
+      { field: "age", prompt: "Say the patient's age" },
+      { field: "medicine", prompt: "Say the prescribed medicine" },
+      { field: "description", prompt: "Describe the patient's condition" }
+    ];
+
+    let currentQuestion = 0;
+
+    function speak(text, callback) {
+      const synth = window.speechSynthesis;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.onend = callback;
+      synth.speak(utterance);
+    }
+
+    function listen(callback) {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.start();
+
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript.toLowerCase().trim();
+        callback(transcript);
+      };
+
+      recognition.onerror = function(event) {
+        alert("Speech recognition error: " + event.error);
+        callback(""); // Continue even on error
+      };
+    }
+
+    function startVoiceLoop() {
+      document.getElementById("status").innerText = "Voice input started...";
+      processOnePatient();
+    }
+
+    function processOnePatient() {
+      currentQuestion = 0;
+      askNextQuestion(() => {
+        speak("Submitting the record", () => {
+          document.getElementById("doctorForm").submit();
+          setTimeout(() => {
+            clearForm();
+            speak("Say next patient details or say completed to stop", () => {
+              listen((response) => {
+                if (response.includes("completed")) {
+                  document.getElementById("status").innerText = "Voice input stopped.";
+                  speak("Voice input stopped", null);
+                } else {
+                  processOnePatient(); // Start next patient
+                }
+              });
+            });
+          }, 500);
+        });
+      });
+    }
+
+    function askNextQuestion(onAllAnswered) {
+      if (currentQuestion >= questions.length) {
+        onAllAnswered();
+        return;
+      }
+
+      const q = questions[currentQuestion];
+      speak(q.prompt, () => {
+        listen((answer) => {
+          document.getElementById(q.field).value = answer;
+          currentQuestion++;
+          setTimeout(() => askNextQuestion(onAllAnswered), 300);
+        });
+      });
+    }
+
+    function clearForm() {
+      questions.forEach(q => {
+        document.getElementById(q.field).value = "";
+      });
+    }
+  </script>
+</body>
+</html>
