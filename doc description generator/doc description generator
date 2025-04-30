@@ -1,0 +1,40 @@
+from flask import Flask, request, render_template
+from openpyxl import Workbook, load_workbook
+from datetime import datetime
+import os
+
+app = Flask(__name__,template_folder='test')
+
+# Excel file location
+EXCEL_FILE = "C:/Users/lokeshwaran/OneDrive/Desktop/ragul/doc discription data.xlsx"
+
+def save_to_excel(date, name, age, medicine, description):
+    if os.path.exists(EXCEL_FILE):
+        wb = load_workbook(EXCEL_FILE)
+        ws = wb.active
+    else:
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["Date", "Name", "Age", "Medicine", "Description"])  # Header row
+
+    ws.append([date, name, age, medicine, description])
+    wb.save(EXCEL_FILE)
+    print(f"Saved: {name}, {age}, {medicine}, {description}")
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        # Get form data from the HTML
+        name = request.form.get('name', '').strip()
+        age = request.form.get('age', '').strip()
+        medicine = request.form.get('medicine', '').strip()
+        description = request.form.get('description', '').strip()
+        today = datetime.today().strftime("%Y-%m-%d")
+
+        save_to_excel(today, name, age, medicine, description)
+        return "Record saved successfully", 200
+
+    return render_template('index.html')  # Ensure this matches your HTML file name
+
+if __name__ == '__main__':
+    app.run(debug=True)
